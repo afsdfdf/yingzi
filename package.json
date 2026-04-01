@@ -1,0 +1,17 @@
+{
+  "name": "yingzi-guardian-platform",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "dev": "pnpm --filter @yingzi/api dev",
+    "dev:web": "pnpm --filter @yingzi/admin-web dev",
+    "dev:mobile": "pnpm --filter @yingzi/mobile-h5 dev",
+    "start:api": "pnpm --filter @yingzi/api start",
+    "build:api": "pnpm --filter @yingzi/api build",
+    "build:admin": "pnpm --filter @yingzi/admin-web build",
+    "build:mobile": "pnpm --filter @yingzi/mobile-h5 build",
+    "build": "pnpm -r build",
+    "check": "pnpm -r check"
+  }
+}
