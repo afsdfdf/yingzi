@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+
+cd /www/wwwroot/yingzi
+
+echo "== pull =="
+git fetch origin
+git reset --hard origin/main
+
+echo "== install =="
+pnpm install
+
+echo "== build =="
+pnpm build
+
+echo "== restart api =="
+pm2 restart yingzi-api || pm2 start deploy/pm2/ecosystem.config.generated.cjs
+
+echo "== reload nginx =="
+nginx -t
+nginx -s reload
+
+echo "== done =="

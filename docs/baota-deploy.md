@@ -1,159 +1,116 @@
 # 宝塔部署说明
 
-本项目推荐按宝塔常见方式拆成三部分部署：
+本项目推荐拆成三部分部署：
 
-1. `API` 用 Node + PM2 运行
-2. `admin-web` 构建成静态站点
-3. `mobile-h5` 构建成静态站点
+1. `API` 用 `Node.js + PM2` 运行
+2. `admin-web` 作为静态站点交给 `Nginx`
+3. `mobile-h5` 作为静态站点交给 `Nginx`
 
-## 一、服务器准备
+## 一键部署
 
-宝塔面板建议安装：
+服务器环境准备：
 
 - `Nginx`
-- `Node.js 运行环境`
-- `PM2 管理器` 或可执行 `npm install -g pm2`
+- `Node.js`
+- `Git`
+- `PM2`
+- `pnpm`
 
-建议目录：
-
-- 项目代码：`/www/wwwroot/yingzi`
-- 管理端站点：`/www/wwwroot/yingzi-admin`
-- 用户端站点：`/www/wwwroot/yingzi-mobile`
-
-## 二、上传项目
-
-把整个项目上传到：
+推荐项目目录：
 
 - `/www/wwwroot/yingzi`
 
-进入项目根目录执行：
+如果你已经把仓库推到 GitHub，可以直接在服务器执行：
 
 ```bash
-pnpm install
-pnpm build
+cd /www/wwwroot/yingzi
+bash deploy/baota-onekey.sh \
+  --api-domain api.example.com \
+  --admin-domain admin.example.com \
+  --mobile-domain m.example.com \
+  --jwt-secret "replace-with-a-strong-secret"
 ```
 
-## 三、启动后端 API
+脚本会自动完成：
 
-后端目录：
+1. 拉取最新代码
+2. 安装依赖
+3. 构建整个工作区
+4. 写入 `apps/api/.env.production`
+5. 生成 Linux 可用的 `PM2` 配置
+6. 启动 `yingzi-api`
+7. 生成 3 个域名的 `Nginx` 配置
+8. 测试并重载 `Nginx`
 
-- `/www/wwwroot/yingzi/apps/api`
+脚本位置：
 
-先准备环境变量：
+- [baota-onekey.sh](/D:/yingzi/deploy/baota-onekey.sh)
+
+## 生成后的域名配置
+
+脚本会自动生成：
+
+1. API 域名配置
+2. 管理后台域名配置
+3. 用户端 H5 域名配置
+
+其中管理后台和用户端都包含：
+
+- `SPA` 刷新回退
+- `/api/` 反向代理到后端 API
+
+## 自动更新
+
+部署成功后，后续更新有两种方式。
+
+### 方式一：重复执行一键部署脚本
+
+每次发布时重新执行：
 
 ```bash
-cp .env.production.example .env.production
+cd /www/wwwroot/yingzi
+bash deploy/baota-onekey.sh \
+  --api-domain api.example.com \
+  --admin-domain admin.example.com \
+  --mobile-domain m.example.com \
+  --jwt-secret "replace-with-a-strong-secret"
 ```
 
-修改：
+### 方式二：使用更新脚本
 
-- `PORT`
-- `JWT_SECRET`
+示例文件：
 
-### 方式 A：宝塔 PM2 管理器
+- [update.sh.example](/D:/yingzi/deploy/update.sh.example)
 
-启动目录：
-
-- `/www/wwwroot/yingzi/apps/api`
-
-启动命令：
+你可以复制成服务器上的真实文件：
 
 ```bash
-node dist/index.js
+cp /www/wwwroot/yingzi/deploy/update.sh.example /www/wwwroot/yingzi/deploy/update.sh
+chmod +x /www/wwwroot/yingzi/deploy/update.sh
 ```
 
-环境变量至少设置：
-
-- `NODE_ENV=production`
-- `HOST=0.0.0.0`
-- `PORT=3002`
-- `JWT_SECRET=你的生产密钥`
-
-### 方式 B：使用 PM2 配置文件
-
-配置文件位置：
-
-- [ecosystem.config.cjs](/D:/yingzi/deploy/pm2/ecosystem.config.cjs)
-
-使用前把 `cwd` 和 `JWT_SECRET` 改成服务器实际值，然后执行：
+然后每次执行：
 
 ```bash
-pm2 start deploy/pm2/ecosystem.config.cjs
-pm2 save
+/www/wwwroot/yingzi/deploy/update.sh
 ```
 
-## 四、部署管理端
+也可以把它挂到：
 
-构建产物目录：
+- 宝塔计划任务
+- GitHub Webhook 接收器
 
-- `/www/wwwroot/yingzi/apps/admin-web/dist`
+## SSL
 
-把 `dist` 内文件复制到：
+脚本不会自动申请 SSL。
 
-- `/www/wwwroot/yingzi-admin`
+部署完成后请在宝塔面板中：
 
-宝塔新建站点：
+1. 给 `api`、`admin`、`mobile` 三个域名申请证书
+2. 开启强制 HTTPS
 
-- 域名示例：`admin.yourdomain.com`
-- 根目录：`/www/wwwroot/yingzi-admin`
+## 注意事项
 
-如果需要 API 代理，可在站点配置里加入：
-
-```nginx
-location /api/ {
-    proxy_pass http://127.0.0.1:3002;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-
-## 五、部署用户端 H5
-
-构建产物目录：
-
-- `/www/wwwroot/yingzi/apps/mobile-h5/dist`
-
-把 `dist` 内文件复制到：
-
-- `/www/wwwroot/yingzi-mobile`
-
-宝塔新建站点：
-
-- 域名示例：`m.yourdomain.com`
-- 根目录：`/www/wwwroot/yingzi-mobile`
-
-同样需要 API 代理：
-
-```nginx
-location /api/ {
-    proxy_pass http://127.0.0.1:3002;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-
-## 六、当前推荐端口
-
-- API：`3002`
-- 管理端：由 Nginx 站点直接提供静态文件
-- 用户端：由 Nginx 站点直接提供静态文件
-
-## 七、发布顺序
-
-1. 上传新代码
-2. `pnpm install`
-3. `pnpm build`
-4. 用宝塔或 PM2 重启 API
-5. 覆盖管理端静态文件
-6. 覆盖用户端静态文件
-7. 浏览器验证首页、登录、API 代理
-
-## 八、当前注意点
-
-- `admin-web` 和 `mobile-h5` 现在都是前端静态站点，最适合放到宝塔 Nginx 站点目录。
-- `api` 是 Node 服务，建议不要直接暴露端口到公网，优先通过 Nginx 反代。
-- 后续如果接 MySQL、Redis，再在宝塔中补数据库和缓存服务配置。
+1. 当前数据仍以本地内存数据为主，服务重启后会回到初始演示数据。
+2. 生产环境务必替换 `JWT_SECRET`。
+3. 如需接入 MySQL、Redis、对象存储，建议在下一轮部署前补充环境变量与服务配置。

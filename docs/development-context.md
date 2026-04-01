@@ -63,6 +63,8 @@ Update this file on every meaningful development turn.
 - API should run as a Node service via PM2
 - `admin-web` and `mobile-h5` should be deployed as static Nginx sites
 - BaoTa deployment doc: [baota-deploy.md](/D:/yingzi/docs/baota-deploy.md)
+- Added one-click BaoTa deployment script with domain-based Nginx config generation: [baota-onekey.sh](/D:/yingzi/deploy/baota-onekey.sh)
+- Added update script example for repeat deployments: [update.sh.example](/D:/yingzi/deploy/update.sh.example)
 
 ## Important Notes
 

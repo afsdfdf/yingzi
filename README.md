@@ -23,6 +23,23 @@ Default local addresses:
 - API root: `http://127.0.0.1:3002/`
 - API health: `http://127.0.0.1:3002/health`
 
+## BaoTa One-Click Deploy
+
+After pushing the repository to GitHub, you can deploy on a BaoTa server with:
+
+```bash
+cd /www/wwwroot/yingzi
+bash deploy/baota-onekey.sh \
+  --api-domain api.example.com \
+  --admin-domain admin.example.com \
+  --mobile-domain m.example.com \
+  --jwt-secret "replace-with-a-strong-secret"
+```
+
+Details:
+
+- [baota-deploy.md](/D:/yingzi/docs/baota-deploy.md)
+
 ## Demo Accounts
 
 - Platform admin: `13900000001 / Admin@123`
