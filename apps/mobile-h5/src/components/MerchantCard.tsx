@@ -10,11 +10,10 @@ export function MerchantCard({ merchant, onOpen }: MerchantCardProps) {
   return (
     <article className="merchant-card">
       <img className="merchant-thumb" src={merchant.coverImage} alt={merchant.name} />
-      <div>
+      <div className="merchant-content">
         <strong>{merchant.name}</strong>
-        <span>
-          {merchant.city} · {formatIndustry(merchant.industryType)}
-        </span>
+        <span>{`${merchant.city} · ${formatIndustry(merchant.industryType)}`}</span>
+        <small>{merchant.status === "approved" ? "营业中" : "待完善"}</small>
       </div>
       <button onClick={() => onOpen(merchant.id)}>进店</button>
     </article>

@@ -23,10 +23,10 @@ export function DiscoverView({ merchants, products, onOpenMerchant, onOpenProduc
       </section>
 
       <section className="section-block">
-        <SectionTitle title="精选商品" subtitle="跨行业商品流统一浏览" right={`${products.length} 件`} />
+        <SectionTitle title="精选商品" subtitle="跨行业商品统一浏览" right={`${products.length} 件`} />
         <div className="product-grid">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} actionLabel="查看" onOpen={onOpenProduct} />
+            <ProductCard key={product.id} product={product} actionLabel="详情" onOpen={onOpenProduct} />
           ))}
         </div>
       </section>

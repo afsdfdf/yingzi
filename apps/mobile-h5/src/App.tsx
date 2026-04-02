@@ -8,10 +8,26 @@ import { MerchantDetailView } from "./features/views/MerchantDetailView";
 import { OrdersView } from "./features/views/OrdersView";
 import { ProductDetailView } from "./features/views/ProductDetailView";
 import { ProfileView } from "./features/views/ProfileView";
-import { request } from "./lib/api";
-import type { CartItem, HomeResponse, ListResponse, Merchant, Product, Screen, TabKey } from "./types";
+import { getStoredToken, request, setStoredToken } from "./lib/api";
+import type {
+  AuthUser,
+  CartItem,
+  CartResponse,
+  HomeResponse,
+  ListResponse,
+  LoginResponse,
+  Merchant,
+  OrderRecord,
+  Product,
+  Screen,
+  TabKey
+} from "./types";
 
 const homeScreen: Screen = { type: "tab", tab: "home" };
+const demoLogin = {
+  phone: "13900000004",
+  password: "User@123"
+};
 
 export function App() {
   const [stack, setStack] = useState<Screen[]>([homeScreen]);
@@ -20,7 +36,10 @@ export function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedMerchant, setSelectedMerchant] = useState("all");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState("");
+  const [authPending, setAuthPending] = useState(false);
 
   const screen = stack[stack.length - 1] ?? homeScreen;
   const activeTab = useMemo<TabKey>(() => {
@@ -29,7 +48,7 @@ export function App() {
   }, [stack]);
 
   useEffect(() => {
-    const load = async () => {
+    const loadPublicData = async () => {
       try {
         const [homeData, merchantData, productData] = await Promise.all([
           request<HomeResponse>("/api/v1/storefront/home"),
@@ -46,7 +65,15 @@ export function App() {
       }
     };
 
-    void load();
+    void loadPublicData();
+  }, []);
+
+  useEffect(() => {
+    if (!getStoredToken()) {
+      return;
+    }
+
+    void hydrateConsumer();
   }, []);
 
   const currentMerchant =
@@ -62,6 +89,54 @@ export function App() {
     [cart, currentProduct]
   );
 
+  async function hydrateConsumer() {
+    try {
+      const [me, cartData, orderData] = await Promise.all([
+        request<AuthUser>("/api/v1/auth/me"),
+        request<CartResponse>("/api/v1/cart"),
+        request<ListResponse<OrderRecord>>("/api/v1/orders")
+      ]);
+
+      setCurrentUser(me);
+      setCart(cartData.items.map((item) => ({ productId: item.productId, quantity: item.quantity })));
+      setOrders(orderData.items);
+      setError("");
+    } catch (loadError) {
+      setStoredToken("");
+      setCurrentUser(null);
+      setCart([]);
+      setOrders([]);
+      setError(loadError instanceof Error ? loadError.message : "登录状态已失效，请重新登录");
+    }
+  }
+
+  async function loginAsConsumer(phone: string, password: string) {
+    setAuthPending(true);
+    try {
+      const login = await request<LoginResponse>("/api/v1/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ phone, password })
+      });
+
+      setStoredToken(login.token);
+      setCurrentUser(login.user);
+      await hydrateConsumer();
+      setError("");
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "登录失败");
+    } finally {
+      setAuthPending(false);
+    }
+  }
+
+  async function logout() {
+    setStoredToken("");
+    setCurrentUser(null);
+    setCart([]);
+    setOrders([]);
+    setError("");
+  }
+
   const openTab = (tab: TabKey) => setStack([{ type: "tab", tab }]);
   const pushScreen = (nextScreen: Screen) => setStack((current) => [...current, nextScreen]);
   const openMerchant = (merchantId: string) => pushScreen({ type: "merchant", merchantId });
@@ -70,19 +145,49 @@ export function App() {
     setStack((current) => (current.length > 1 ? current.slice(0, -1) : [homeScreen]));
   };
 
-  const addToCart = (productId: string) => {
-    setCart((current) => {
-      const existing = current.find((item) => item.productId === productId);
+  async function addToCart(productId: string) {
+    if (!currentUser) {
+      openTab("profile");
+      setError("请先登录用户账号后再加入购物车");
+      return;
+    }
 
-      if (existing) {
-        return current.map((item) =>
-          item.productId === productId ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
+    try {
+      await request("/api/v1/cart/items", {
+        method: "POST",
+        body: JSON.stringify({ productId, quantity: 1 })
+      });
+      await hydrateConsumer();
+    } catch (cartError) {
+      setError(cartError instanceof Error ? cartError.message : "加入购物车失败");
+    }
+  }
 
-      return [...current, { productId, quantity: 1 }];
-    });
-  };
+  async function checkoutCart() {
+    if (!currentUser || cart.length === 0) {
+      openTab("profile");
+      setError("请先登录并添加商品后再结算");
+      return;
+    }
+
+    try {
+      await request<OrderRecord>("/api/v1/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          customerName: currentUser.name,
+          customerPhone: currentUser.phone,
+          address: "上海市浦东新区演示地址 88 号",
+          remark: "移动端演示下单",
+          items: cart
+        })
+      });
+
+      await hydrateConsumer();
+      openTab("orders");
+    } catch (orderError) {
+      setError(orderError instanceof Error ? orderError.message : "创建订单失败");
+    }
+  }
 
   const renderScreen = () => {
     if (screen.type === "merchant" && currentMerchant) {
@@ -121,15 +226,40 @@ export function App() {
     }
 
     if (activeTab === "cart") {
-      return <CartView cart={cart} products={products} onOpenProduct={openProduct} />;
+      return (
+        <CartView
+          cart={cart}
+          products={products}
+          currentUser={currentUser}
+          onOpenProduct={openProduct}
+          onCheckout={checkoutCart}
+          onGoLogin={() => openTab("profile")}
+        />
+      );
     }
 
     if (activeTab === "orders") {
-      return <OrdersView products={products} onOpenProduct={openProduct} />;
+      return (
+        <OrdersView
+          orders={orders}
+          currentUser={currentUser}
+          onOpenProduct={openProduct}
+          onGoLogin={() => openTab("profile")}
+        />
+      );
     }
 
     if (activeTab === "profile") {
-      return <ProfileView />;
+      return (
+        <ProfileView
+          currentUser={currentUser}
+          authPending={authPending}
+          demoPhone={demoLogin.phone}
+          demoPassword={demoLogin.password}
+          onLogin={loginAsConsumer}
+          onLogout={logout}
+        />
+      );
     }
 
     return (
@@ -148,7 +278,11 @@ export function App() {
 
   return (
     <div className="mobile-shell">
-      <TopBar onSearchClick={() => openTab("discover")} />
+      <TopBar
+        onSearchClick={() => openTab("discover")}
+        userLabel={currentUser ? currentUser.name : "登录"}
+        onUserClick={() => openTab("profile")}
+      />
       {renderScreen()}
       {error ? <div className="error-box">{error}</div> : null}
       <BottomNav activeTab={activeTab} onChange={openTab} />

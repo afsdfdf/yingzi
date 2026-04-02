@@ -1,3 +1,4 @@
+import { formatCurrency } from "../../lib/format";
 import type { Merchant, Product } from "../../types";
 
 type ProductDetailViewProps = {
@@ -31,7 +32,7 @@ export function ProductDetailView({
           <div className="detail-chip">{product.categoryName}</div>
           <h1>{product.name}</h1>
           <p>{`销量 ${product.sales} · ${product.status === "on_sale" ? "在售" : "预览中"}`}</p>
-          <div className="detail-price">{`Y ${product.price}`}</div>
+          <div className="detail-price">{formatCurrency(product.price)}</div>
           <div className="detail-actions">
             <button className="ghost-cta" onClick={() => onAddToCart(product.id)}>
               {`加入购物车${cartCount > 0 ? ` (${cartCount})` : ""}`}

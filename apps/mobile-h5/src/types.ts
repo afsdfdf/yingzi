@@ -34,6 +34,59 @@ export type HomeResponse = {
 
 export type ListResponse<T> = {
   items: T[];
+  total?: number;
+};
+
+export type AuthUser = {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  phone: string;
+  role: string;
+  permissions?: string[];
+  lastLoginAt?: string;
+};
+
+export type LoginResponse = {
+  token: string;
+  user: AuthUser;
+};
+
+export type CartItem = {
+  productId: string;
+  quantity: number;
+};
+
+export type CartItemWithProduct = CartItem & {
+  product: Product | null;
+};
+
+export type CartResponse = {
+  userId: string;
+  updatedAt: string;
+  items: CartItemWithProduct[];
+};
+
+export type OrderItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  price: number;
+};
+
+export type OrderRecord = {
+  id: string;
+  orderNo: string;
+  customerName: string;
+  customerPhone: string;
+  totalAmount: number;
+  itemCount: number;
+  status: string;
+  address: string;
+  remark: string;
+  items: OrderItem[];
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type TabKey = "home" | "discover" | "cart" | "orders" | "profile";
@@ -42,8 +95,3 @@ export type Screen =
   | { type: "tab"; tab: TabKey }
   | { type: "merchant"; merchantId: string }
   | { type: "product"; productId: string };
-
-export type CartItem = {
-  productId: string;
-  quantity: number;
-};

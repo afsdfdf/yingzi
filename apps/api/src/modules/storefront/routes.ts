@@ -18,7 +18,7 @@ export const storefrontRoutes: FastifyPluginAsync = async (app) => {
         })),
       categories: [
         { code: "building_materials", name: "建材五金" },
-        { code: "auction", name: "拍卖臻选" },
+        { code: "auction", name: "拍卖精选" },
         { code: "retail", name: "连锁门店" },
         { code: "ai_service", name: "AI 导购" }
       ],
@@ -102,4 +102,4 @@ export const storefrontRoutes: FastifyPluginAsync = async (app) => {
         : null
     };
   });
-};
+}
